@@ -1,0 +1,23 @@
+import requests,xml.etree.ElementTree as ET
+class RateFetchError(Exception):pass
+class CurrencyConverter:
+    def __init__(self,rate):self.rate=rate
+    def to_usd(self,amt):
+        if amt<0:raise ValueError("Сумма не может быть отрицательной")
+        return amt/self.rate
+def fetch_usd_rate():
+    url="https://nationalbank.kz/rss/get_rates.cfm?fdate="+__import__('datetime').datetime.now().strftime("%d.%m.%Y")
+    r=requests.get(url)
+    if r.status_code!=200:raise RateFetchError("Не удалось получить данные курса")
+    root=ET.fromstring(r.content)
+    for i in root.findall(".//item"):
+        if i.find("title").text.strip()=="USD":
+            try:return float(i.find("description").text.strip())
+            except:raise RateFetchError("Неверный формат курса")
+    raise RateFetchError("Курс USD не найден")
+try:
+    rate=fetch_usd_rate()
+    c=CurrencyConverter(rate)
+    amt=float(input("Введите сумму в тенге (KZT): "))
+    print(f"{amt:.2f} KZT = {c.to_usd(amt):.2f} USD (курс {rate:.2f} KZT/USD)")
+except Exception as e:print("Ошибка:",e)
